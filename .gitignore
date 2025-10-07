@@ -96,3 +96,16 @@ dmypy.json
 
 # Pyre
 .pyre/
+
+
+# Ignorar certificados privados e arquivos sensíveis do Let's Encrypt
+/nginx/ssl/live/
+/nginx/ssl/archive/
+/nginx/ssl/renewal/
+
+# Ignorar logs gerados pelo Nginx (geralmente não precisa versionar)
+/nginx/logs/*
+
+# Se houver arquivos temporários ou editor, ignore-os
+*.swp
+*.DS_Store

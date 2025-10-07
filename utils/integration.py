@@ -10,7 +10,6 @@ TOKEN = os.getenv('TOKEN')
 USER = os.getenv('USER')
 CODE_LINK = os.getenv('CODE_LINK')
 ID_CLINICA = os.getenv('id_clinica')
-STR_CLINICA = os.getenv('str_clinica')
 ID_LOJA = os.getenv('ID_LOJA')
 
 
@@ -49,13 +48,15 @@ def list_all_professionals():
     dados = response.json()
     if isinstance(dados, list) and dados:
         return dados
+    if isinstance(dados, dict) and dados:
+        return dados
 
 
 def post_patient_create(name=str, birth_date=str, sex=str,  email=str, phone=int, rg=int, cpf=int):
     url_get_procedures = URL+'/patient/create'
 
     params = {
-        "subscriber_id": STR_CLINICA,
+        "subscriber_id": USER,
         "Name": name,
         "BirthDate": birth_date,
         "Sex": sex,
@@ -91,20 +92,31 @@ def day_week(date):
     return day_week[day.weekday()]
 
 
-def horario_dentro_limite(inicio, dia):
+def horario_dentro_limite(inicio, dia, name):
     """
     Verifica se o horário está dentro do limite aceito para o dia
     """
-    if dia in ['segunda', 'quarta', 'sexta']:
-        return '09:15' <= inicio <= '20:00'
-    elif dia in ['terça', 'quinta']:
-        return '13:30' <= inicio <= '20:00'
-    else:
-        return False  # sabado, domingo ou outro
+
+    if name in ['bruna']:
+        if dia in ['segunda', 'quarta', 'sexta']:
+            return '09:30' <= inicio <= '19:30'
+        elif dia in ['terça', 'quinta']:
+            return '13:30' <= inicio <= '19:30'
+        else:
+            return False
+    elif name in ['paola']:
+        if dia in ['segunda', 'terça', 'quarta', 'quinta', 'sexta']:
+            return '14:00' <= inicio <= '19:30'
+        else:
+            return False
+    elif name in ['karoline']:
+        if dia in ['segunda', 'terça', 'quarta', 'quinta', 'sexta']:
+            return '14:00' <= inicio <= '19:30'
+        else:
+            return False
 
 
-def get_avaliable_days(date):
-    print(date)
+def get_avaliable_days(date, name):
     day = day_week(date)
 
     if day == 'domingo':
@@ -113,7 +125,7 @@ def get_avaliable_days(date):
     url_get_procedures = URL + '/appointment/get_avaliable_days'
 
     payload = {
-        'subscriber_id': STR_CLINICA,
+        'subscriber_id': USER,
         'code_link': CODE_LINK,
         'from': date,
         'to': date,
@@ -130,7 +142,7 @@ def get_avaliable_days(date):
             inicio = dic["from"]
             fim = dic["to"]
 
-            if not horario_dentro_limite(inicio, day):
+            if not horario_dentro_limite(inicio, day, name):
                 continue
 
             horario = inicio + '-' + fim
@@ -139,6 +151,7 @@ def get_avaliable_days(date):
                 'proficional': dic['professionalId']
             }
             times_free.append(free)
+            print(times_free, 'dia')
         return times_free
 
     if isinstance(dates, list) and dates:

@@ -30,14 +30,18 @@ def home_menu(text, phone, name):
     msg = f'''Olá  👋
 {hello()} {name if name else 'tudo bem'}! Como posso te ajudar hoje?
 
-Para  voltar ao menu incial digite X
-Em qualquer parte da conversa'''
+                        Para  voltar ao menu incial digite X'''
     optionList = [
-                {"id": '2.1', "description": "procedimentos, valores e contra indicações", "title": "Procedimentos"},
+                {"id": '2.1', "description": "", "title": "Procedimentos"},
                 {
                     "id": "1",
                     "description": "Agendamento de consulta ou retorno",
                     "title": "Agendamento"
+                },
+                {
+                    "id": "6",
+                    "description": "",
+                    "title": "Promoções"
                 },
                 {
                     "id": "3",
@@ -55,7 +59,7 @@ Em qualquer parte da conversa'''
                     "title": "Localização"
                 },{
                     "id": "2",
-                    "description": "Duvidas, contra indicações e detalhes sobre procediemntos",
+                    "description": "Duvidas, contra indicações e detalhes sobre procedimentos",
                     "title": "Mais informações"
                 }
             ]
@@ -69,9 +73,14 @@ Em qualquer parte da conversa'''
 
 
 def format_date(data_str):
+    day_current = datetime.now()
+
     try:
         data_obj = parser.parse(data_str, dayfirst=True)  # dayfirst=True para interpretar dia/mês/ano
-        return data_obj.strftime("%Y-%m-%d")
+        if data_obj > day_current:
+            return data_obj.strftime("%Y-%m-%d")
+        else:
+            return None
     except (ValueError, OverflowError):
         return None
 
@@ -148,18 +157,52 @@ def continue_registration(phone, mensagem):
         return "Erro no fluxo de cadastro. Vamos reiniciar. Qual seu nome completo?"
 
 
+def procedures_professional(procedures_chosen):
+    if isinstance(procedures_chosen, int):
+        if procedures_chosen in [ 1, 2,3,6]:
+            return ['Bruna', 'Karoline']
+        elif procedures_chosen in [4, 5]:
+            return ['Bruna']
+        elif procedures_chosen in [7,8 ,9,10,11,13,14,15,16]:
+            return ['Karoline']
+        elif procedures_chosen in [17, 18, 19, 20, 21, 22]:
+            return ['Paola']
+        elif procedures_chosen == [12]:
+            return ['Karoline', 'Paola']
+    else:
+        chosen = procedures_chosen.lower()
+
+        if chosen in ['botox', 'preenchimento', 'bioestimulador de colágeno',
+        'peelings']:
+            return ['Bruna', 'Karoline']
+        elif chosen in ['fios pdo', 'fios tração']:
+            return ['Bruna']
+        elif chosen in ['microvasos', 'microagulhamento', 'pdrn', 
+        'nctf', 'skinbooster', 'lavieen', 'tratamentos corporais','crio skinner',
+        'enzimas']:
+            return ['Karoline']
+        elif chosen in ['tratamentos gordura localizada', 'tratamentos celulite',
+        'tratamento flacidez corporal radiofrequência', 'massagem drenagem',
+        'massagem relaxante', 'massagem modeladora']:
+            return ['Paola']
+        elif chosen in ['depilação a laser']:
+            return ['Karoline', 'Paola']
+
+
 def is_registering(phone):
     return phone in state_registration
 
 
 def start_scheduling(phone):
-    scheduling_state[phone] = "reason"
+    #scheduling_state[phone] = "reason"
+    scheduling_state[phone] = "tipe_scheduling"
     scheduling_data[phone] = {}
-    return '''Qual o motivo do atendimento ou procedimento desejado?
+    return '''Você deseja realizar um novo agendamento ou é um retorno?
     
+    1- Novo procedimento
+    2- Retorno
     
-    Para cancelar, digite X 
-    '''
+                                             Digite 'X' para sair!'''
 
 
 def continue_scheduling(phone, mensagem):
@@ -174,56 +217,102 @@ def continue_scheduling(phone, mensagem):
     estado = scheduling_state.get(phone)
     dados = scheduling_data.get(phone, {})
 
+    if estado == "tipe_scheduling":
+        if mensagem_forma in ['1', 'procedimento', 'novo', 'procedimento novo']:
+            scheduling_state[phone] = "reason"
+
+            global procedures
+            
+            procedures = [(1,'Botox'), (2,'Preenchinento'), (3,'Bioestimulador De colágeno'), (4,'Fios PDO'), (5,'Fios tração'), (6,'Peelings'), 
+                    (7,'Microvasos'), (8,'Microagulhamento'), (9,'PDRN'), (10,'NCTF'), (11,'Skinbooster'), (12,'Depilação a laser'), (13,'Lavieen'),
+                    (14,'Tratamentos Corporais'), (15,'Crio Skinner'), (16,'Enzimas'),  (17,'Tratamentos Gordura Localizada'),
+                    (18,'Tratamentos Celulite'), (19,'Tratamento flacidez corporal Radiofrequência'), 
+                    (20,'Massagem Drenagem'), (21,'Massagem Relaxante'), (22,'Massagem modeladora')]
+            
+            proces = "\n" + "\n ".join([f' {proc[0]}- {proc[1]}'for proc in procedures])
+
+            return f''' Certo! Qual procedimento você deseja realizar? \n{proces}'''
+        elif mensagem_forma in ['2', 'retorno']:
+            scheduling_state[phone] = "profissional"
+            profissionais = list_all_professionals()
+
+            nomes = "\n " + "\n ".join([f' {idx+1}- {prof["name"]}' for idx, prof in enumerate(profissionais)])
+            return f" Com qual profissional foi seu último atendimento? \n{nomes}"
+        else:
+            return "Por favor, responda com 1️⃣ para atendimento novo ou 2️⃣ para retorno."
+
     if estado == "reason":
-        # verifica se a mensagem esta dentro do padão esperado
-        #if mensagem not in ['retorno', 'avaliação', 'botox', ]
+        if isinstance(mensagem, str):
+            mensagem = mensagem.title()
+            if any(mensagem in i for _, i in procedures):
+                professional_chosen = procedures_professional(mensagem)
+            else:
+                mensagem = int(mensagem)
+
+        if isinstance(mensagem, int):
+            if any(mensagem == idx for idx, _ in procedures):    
+                professional_chosen = procedures_professional(mensagem)
+
+            else:
+                return 'procedimento invalido'
         dados["reason"] = mensagem
         scheduling_state[phone] = "profissional"
+        if not isinstance(professional_chosen, list):
+            professional_chosen = [professional_chosen]
         
-        profissionais = list_all_professionals()
-        nomes = "\n- " + "\n- ".join([prof["name"] for prof in profissionais])
-        return f"Qual o profissional preferido ou quem lhe atendeu no último atendimento?\n{nomes}"
-    
+        profissionais_formatados = "\n- " + "\n- ".join(f'{prof}' for prof in professional_chosen)
+        return f'Digite o primeiro nome do profissional com quem deseja agendar o procedimento:{profissionais_formatados}'
+
     elif estado == 'profissional':
         profissionais = list_all_professionals()
-
-        # Verifica se o nome digitado bate com algum profissional
+        global nome_digitado
         nome_digitado = mensagem.strip().lower()
 
         profissional_encontrado = next(
-            (prof for prof in profissionais if prof["name"].lower().split(' ')[0] in nome_digitado),
+            (prof for prof in profissionais if prof["name"].lower().split(' ')[0] in nome_digitado or prof for prof in profissionais if prof["name"].lower().split(' ')[0] == nome_digitado ),
             None
         )
+
+        if nome_digitado == 'x':
+            scheduling_data.pop(phone)
+            scheduling_state.pop(phone)
+            estado = None
+            dados = None
+            return start_scheduling(phone)
+
         if not profissional_encontrado:
             nomes_disponiveis = "\n- " + "\n- ".join([prof["name"] for prof in profissionais])
             return f"Profissional não encontrado. Por favor, digite um nome válido. Veja os disponíveis:{nomes_disponiveis}"
 
         dados["profissional"] = profissional_encontrado["name"]
         dados["profissional_id"] = profissional_encontrado["id"]
-
         scheduling_state[phone] = "day"
         scheduling_data[phone] = dados
 
         return "Qual o dia preferido? (Ex: DD/MM/AAAA)"
 
     elif estado == "day":
-        data_digitada = mensagem
-        data_formatada = format_date(data_digitada)
+        msg = mensagem.lower()
+        data_formatada = format_date(mensagem)
+
+        if 'x' in msg:
+            return None
 
         if data_formatada is None:
             return "Formato de data inválido. Por favor, envie no formato DD/MM/AAAA."
 
         dados["day"] = data_formatada
-        time_free = get_avaliable_days(dados['day'])
-        print(time_free)
+        time_free = get_avaliable_days(dados['day'], nome_digitado)      
+
         if not time_free:
-            return "⚠️ Não há horários disponíveis para esse dia. Por favor, escolha outro."
+            return "⚠️ Para Agendamentos os sabados fale com atendente humano. Caso queira continuar por aqui informe uma data valida. DD/MM/AAAA \n"\
+            "Menu inicial digite X"
 
         profissional_id = dados.get("profissional_id")
-        horarios_filtrados = [item['horario'] for item in time_free if item['proficional'] == profissional_id]
 
+        horarios_filtrados = [item['horario'] for item in time_free if item['proficional'] == profissional_id]
         if not horarios_filtrados:
-            return "⚠️ Não há horários disponíveis para esse profissional neste dia."
+            return f"⚠️ Não há horários disponíveis para esse profissional neste dia. Por favor escola outra data"
 
         dados["horarios_disponiveis"] = horarios_filtrados
         scheduling_data[phone] = dados
@@ -232,16 +321,21 @@ def continue_scheduling(phone, mensagem):
         scheduling_state[phone] = "hora"  # só avança aqui depois que já tem os horários
 
         return f"Horários disponíveis para este dia e profissional:\n{lista_horarios}"
-    
+
     elif estado == "hora":
-        dados["hora"] = mensagem
+        msg = mensagem.lower()
+        if 'x' in msg:
+            return None
+        dados["hora"] = msg
         scheduling_state[phone] = "observacao"
         return "Deseja adicionar alguma observação? Se não, responda 'não'."
 
     elif estado == "observacao":
-        dados["observacao"] = mensagem if mensagem.lower() != "não" else ""
+        msg = mensagem.lower()
+        if 'x' in msg:
+            return None
+        dados["observacao"] = msg if msg != "não" else ""
 
-        # Encerra fluxo
         scheduling_state.pop(phone, None)
         info = scheduling_data.pop(phone, {})
 
@@ -274,7 +368,7 @@ def continue_scheduling(phone, mensagem):
 
         cpf = str(dados.get('OtherDocumentId', '')[:3])
 
-        success = create_online_scheduling(
+        confirmation_date = create_online_scheduling(
             name=dados.get('Name'),
             consultation=info["reason"],
             phone=phone,
@@ -287,7 +381,10 @@ def continue_scheduling(phone, mensagem):
             personId=info['profissional_id']
         )
 
-        return resumo + "\n\nVocê recebera a confirmação do agendamento via sms."
+        if confirmation_date:
+            return resumo + "\n\nVocê recebera a confirmação do agendamento via sms."
+        else:
+            return resumo + "\n\nNão foi possivel realizar o agendamento, tente novamente ou escolha a opção flar com atendente."
 
     return "Algo deu errado no processo. Vamos reiniciar. Qual o motivo do atendimento?"
 
@@ -295,6 +392,8 @@ def continue_scheduling(phone, mensagem):
 def is_scheduling(phone):
     return phone in scheduling_state
 
+
+control_procedures = []
 
 def procedures(phone, texto):
     from app import send
@@ -350,7 +449,7 @@ _______________________________________________
 Agende sua avaliação e descubra como a toxina botulínica pode valorizar ainda mais a sua beleza! 💖'''
             send(resposta3, phone)
 
-            return
+            return 
 
         elif "preenchimento labial" in msg_lower:
             resposta1 = '''💋 Preenchimento Labial com Ácido Hialurônico – Realce o que você tem de mais lindo! 💋

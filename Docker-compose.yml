@@ -1,0 +1,41 @@
+services:
+  app:
+    build:
+      context: ./app
+    container_name: app
+    expose:
+      - "8000"
+    networks:
+      - webnet
+
+  nginx:
+    build:
+      context: ./nginx
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/ssl:/etc/letsencrypt
+      - ./nginx/ssl/www:/var/www/certbot
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/logs:/var/log/nginx
+    depends_on:
+      - app
+    networks:
+      - webnet
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./nginx/ssl:/etc/letsencrypt
+      - ./nginx/ssl/www:/var/www/certbot
+    entrypoint: >
+      sh -c "trap exit TERM; while :; do certbot renew --webroot --webroot-path=/var/www/certbot && echo 'certificados renovados'; sleep 12h; done"
+    networks:
+      - webnet
+
+networks:
+  webnet:
+    driver: bridge

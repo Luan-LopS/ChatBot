@@ -130,6 +130,7 @@ def process_conversation(phone, texto):
 
     if is_scheduling(phone):
         resposta = continue_scheduling(phone, texto)
+
         if not resposta:
             patient = get_patient(phone)
             if isinstance(patient, list) and patient:
@@ -204,6 +205,10 @@ def send(msg, phone, buttonButtons=None, optionList=None, location=None):
 
 @app.route(f"/instancia/{Z_API}/receive", methods=["POST"])
 def webhook():
+    token = request.args.get("token")
+    if token != os.getenv("WEBHOOK_SECRET"):
+        return jsonify({"error": "Não autorizado"}), 401
+
     data = request.json
     raw_phone = data.get('phone')
     if not raw_phone:
@@ -224,7 +229,6 @@ def webhook():
         if group is False:
             start_session(phone)
 
-            #verifica  se esta em contato com humano se sim return  null
             if human.get(phone) == True:
                 process_conversation(phone, texto)
                 return jsonify({'status': 'ok'}), 200
@@ -252,7 +256,6 @@ def webhook():
 
                 return jsonify({'status': 'ok'}), 200
             else:
-
                 resposta = home_menu(texto, phone, name_patient)
                 msg = resposta.get("msg", "")
                 optionList = resposta.get("optionList")
@@ -344,44 +347,7 @@ def webhook():
             send(option_list["msg"], phone, optionList=option_list["optionList"])
             return jsonify({"status": "ok"}), 200
 
-        elif response_menu == '2.1.1.1':
-            procedures(phone, 'Toxina Botulínica')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.1.2':
-            procedures(phone, 'Preenchimento Labial')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.1.3':
-            procedures(phone, 'Preenchimento Facial')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.1.4':
-            procedures(phone, 'Preenchimento de Olheiras')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.1.5':
-            procedures(phone, 'Rinomodelação')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.1.6':
-            procedures(phone, 'Limpeza de Pele Profunda')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.1.7':
-            procedures(phone, 'Hydra – Limpeza e Hidratação')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.1.8':
-            procedures(phone, 'Peeling de Ácido Retinoico')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.1.9':
-            procedures(phone, 'Peeling de Vitamina C')
-            return jsonify({"status": "ok"}), 200
-
         elif response_menu == '2.1.2':
-
             duvidas = {
                 "msg": "Estas são algumas dúvidas frequentes:",
                 "optionList": {
@@ -399,24 +365,7 @@ def webhook():
             send(duvidas["msg"], phone, optionList=duvidas["optionList"])
             return jsonify({"status": "ok"}), 200
 
-        elif response_menu == '2.1.2.1':
-            procedures(phone, 'Enzimas')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.2.2':
-            procedures(phone, 'Manta Térmica')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.2.3':
-            procedures(phone, 'CrioSkinner (gordura localizada)')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.2.4':
-            procedures(phone, 'Intradermoterapia')
-            return jsonify({"status": "ok"}), 200
-
         elif response_menu == '2.1.3':
-
             duvidas = {
                 "msg": "Estas são algumas dúvidas frequentes:",
                 "optionList": {
@@ -439,42 +388,6 @@ def webhook():
             send(duvidas["msg"], phone, optionList=duvidas["optionList"])
             return jsonify({"status": "ok"}), 200
 
-        elif response_menu == '2.1.3.1':
-            procedures(phone, 'Laser Lavieen')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.3.2':
-            procedures(phone, 'Depilação a Laser')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.3.3':
-            procedures(phone, 'Tratamento para Melasma')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.3.4':
-            procedures(phone, 'Tratamento de Microvasos')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.3.5':
-            procedures(phone, 'Radiofrequência')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.3.6':
-            procedures(phone, 'Microagulhamento')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.3.7':
-            procedures(phone, 'PDRN com Microagulhamento')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.3.8':
-            procedures(phone, 'Skinbooster')
-            return jsonify({"status": "ok"}), 200
-
-        elif response_menu == '2.1.3.9':
-            procedures(phone, 'NCTF 135 HA')
-            return jsonify({"status": "ok"}), 200
-
         elif response_menu == '2.2':
             send(f"o telefone de numero {phone} esta solicitando cancelamento", phone='41998184071')
             return jsonify({"status": "ok"}), 200
@@ -493,7 +406,6 @@ def webhook():
             return jsonify({"status": "ok"}), 200
 
         elif response_menu == '4':
-            # adiciona o phone na lista  de contato com humano
             human[phone] = True
             process_conversation(phone, texto=None)
             send(f"o telefone de numero {phone} precisa de ajuda e deseja falar com um atendente humano", phone='41995145182')
@@ -503,8 +415,43 @@ def webhook():
             send("Localização da estética 📍", phone, location=True)
             return jsonify({"status": "ok"}), 200
 
+        elif response_menu == '6':
+            human[phone] = True
+            process_conversation(phone, texto=None)
+            send(f"o telefone de numero {phone} quer saber mais informações sobre as promoções", phone='41995145182')
+            return jsonify({"status": "ok"}), 200
+
+        procedures_explanation = [
+                    {"id": '2.1.1.1', "description": "", "title": "Toxina Botulínica"},
+                    {"id": '2.1.1.2', "description": "", "title": "Preenchimento Labial"},
+                    {"id": '2.1.1.3', "description": "", "title": "Preenchimento Facial"},
+                    {"id": '2.1.1.4', "description": "", "title": "Preenchimento de Olheiras"},
+                    {"id": '2.1.1.5', "description": "", "title": "Rinomodelação"},
+                    {"id": '2.1.1.6', "description": "", "title": "Limpeza de Pele Profunda"},
+                    {"id": '2.1.1.7', "description": "", "title": "Hydra – Limpeza e Hidratação"},
+                    {"id": '2.1.1.8', "description": "", "title": "Peeling de Ácido Retinoico"},
+                    {"id": '2.1.1.9', "description": "", "title": "Peeling de Vitamina C"},
+                    {"id": '2.1.2.1', "description": "", "title": "Enzimas"},
+                    {"id": '2.1.2.2', "description": "", "title": "Manta Térmica"},
+                    {"id": '2.1.2.3', "description": "", "title": "CrioSkinner (gordura localizada)"},
+                    {"id": '2.1.2.4', "description": "", "title": "Intradermoterapia"},
+                    {"id": '2.1.3.1', "description": "", "title": "Laser Lavieen"},
+                    {"id": '2.1.3.2', "description": "", "title": "Depilação a Laser"},
+                    {"id": '2.1.3.3', "description": "", "title": "Tratamento para Melasma"},
+                    {"id": '2.1.3.4', "description": "", "title": "Tratamento de Microvasos"},
+                    {"id": '2.1.3.5', "description": "", "title": "Radiofrequência"},
+                    {"id": '2.1.3.6', "description": "", "title": "Microagulhamento"},
+                    {"id": '2.1.3.7', "description": "", "title": "PDRN com Microagulhamento"},
+                    {"id": '2.1.3.8', "description": "", "title": "Skinbooster"},
+                    {"id": '2.1.3.9', "description": "", "title": "NCTF 135 HA"},
+                    ]
+
+        for fac in procedures_explanation:
+            if response_menu == fac['id']:
+                procedures(phone, fac['title'])
+                return jsonify({"status": "ok"}), 200
+
     return jsonify({"status": "ok"}), 200
 
-
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=8000)
